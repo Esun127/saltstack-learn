@@ -1,0 +1,38 @@
+! Configuration File for keepalived
+vrrp_script check_redis {
+    script "/etc/keepalived/scripts/redis_check.sh"
+    interval 2
+}
+
+vrrp_instance VI_1 {
+    {% if grains['role'] == 'master' %}
+    state MASTER
+    {% else %}
+    state BACKUP
+    {% endif %}
+    interface enp0s3
+    virtual_router_id 51
+    {% if grains['role'] == 'master' %}
+    priority 101
+    {% else %}
+    priority 100
+    {% endif %}
+    nopreempt
+    authentication {
+        auth_type PASS
+        auth_pass redis
+    }
+    track_script {
+        check_redis
+    }
+    virtual_ipaddress {
+        {{grains['vip']}}
+    }
+
+    notify_master /etc/keepalived/scripts/redis_master.sh
+    notify_backup /etc/keepalived/scripts/redis_backup.sh
+    notify_fault /etc/keepalived/scripts/redis_fault.sh
+    notify_stop /etc/keepalived/scripts/redis_stop.sh
+
+
+}
